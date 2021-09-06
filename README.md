@@ -3,7 +3,7 @@
 
   ## Table of Contents
   -[Description](#description)<br/>
-  -[Screenshot] (#screenshot)<br/>
+  -[Screenshot](#screenshot)<br/>
   -[Installation](#installation)<br/>
   -[Usage](#usage)<br/>
   -[License](#license)<br/>
@@ -15,7 +15,8 @@
   This project uses node and mysql to create a command line application which shows a database composing of the "employees", departments and roles. The employees's first and last names were changed to be "alias_used" and "origin_country" respectively to follow with the theme of the characters.
 
   ## Screenshot
-
+  ![Screenshot](https://github.com/kevinphan97/Valorant-Employee-Tracker/blob/main/Assets/Employee%20Tracker%20screenshot.png)
+  
   ## Installation
   To run the application, simply clone the code and in the integrated terminal use the following:
   "npm i inquirer"
