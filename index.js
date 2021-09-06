@@ -103,88 +103,63 @@ function viewRoles() {
 };
 
 function addEmployee() {
-    let employeeRole = [];
-    let employees = [];
-
-    promisemysql.createConnection(connectionFunc)
-    .then((dbconnection) => {
-        return Promise.all([
-            dbconnection.query("SELECT * FROM employee_role"),
-            dbconnection.query("SELECT employee.id, concat(employee.alias_used, ' ', employee.origin_country) AS fullAlias FROM employee")
-        ]);
-    })
-
-    .then(([role, name]) => {
-        for (var i = 0; i < role.length; i++){
-            employeeRole.push(role[i].title);
-        }
-        for (var i = 0; i < name.length; i++) {
-            employees.push(name[i].fullAlias)
-        }
-        return Promise.all([role, name]);
-    })
-
-    inquirer.prompt([
+        inquirer.prompt([
         {
             name: "aliasUsed",
             type: "input",
             message: "What is the employee's alias?"
         },
-
         {
             name: "originCountry",
             type: "input",
-            message: "Where is the employee originated from?"
-        },
-
-        {
-            name: "employeeRole",
-            type: "list",
-            message: "What is the employee's role?",
-            choices: employeeRole
-        },
-
-        {
-            name: "employeeManager",
-            type: "list",
-            message: "Who is the employee's manager?",
-            choices: employees
+            message: "What is the employee's country of origin?"
         }
-    ])
-
-    .then(answers => {
-        let roleId;
-
-        let managerId;
-
-        for (var i = 0; i < role.length; i++) {
-            if (answers.employeeRole === role[i].title) {
-                roleId = role[i].id;
-            }
-        }
-
-        for (var i = 0; i < name.length; i++) {
-            if (answers.employeeManager === name[i].fullAlias) {
-                managerId = name[i].id;
-            }
-        }
-
-        connection.query("INSERT INTO employee SET?", 
-        {
-            alias_used: answers.aliasUsed,
-            origin_country: answers.originCountry,
-            role_id: roleId,
-            manager_id: managerId
+        ])
+        .then(answer => {
+        const crit = [answer.aliasUsed, answer.originCountry]
+        const roleSql = "SELECT role.id, role.title FROM role";
+        connection.promise().query(roleSql, (error, data) => {
+            if (error) throw error;
+            const roles = data.map(({ id, title }) => ({ name: title, value: id }));
+            inquirer.prompt([
+                    {
+                    name: "employeeRole",
+                    type: "list",
+                    message: "What is the employee's role?",
+                    choices: roles
+                    }
+            ])
+            .then(roleChoice => {
+                const role = roleChoice.role;
+                crit.push(role);
+                const managerSql =  "SELECT * FROM employee";
+                connection.promise().query(managerSql, (error, data) => {
+                    if (error) throw error;
+                    const managers = data.map(({ id, alias_used, origin_country }) => ({ name: alias_used + " from " + origin_country, value: id }));
+                    inquirer.prompt([
+                    {
+                        name: "employeeManager",
+                        type: "list",
+                        message: "Who is the employee's manager?",
+                        choices: managers
+                    }
+                    ])
+                    .then(managerChoice => {
+                        const manager = managerChoice.manager;
+                        crit.push(manager);
+                        const sql =   `INSERT INTO employee (alias_used, origin_country, role_id, manager_id)
+                                    VALUES (?, ?, ?, ?)`;   
+                        connection.query(sql, crit, (error) => {
+                        if (error) throw error;
+                        console.log("Your new employee has been added!")
+                        start();   
+                        });
+                    });
+                });
+            });
         });
-        console.log("Your new employee has been added!")
-        start();
-    })
-    .catch(err => {
-        console.log(err);
-        start();
-    });
+    });           
 };
-
 function addDepartment() {
     inquirer.prompt([
         {
