@@ -1,17 +1,15 @@
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const inquirer = require("inquirer");
 const consoleTable = require("console.table");
 const promisemysql = require("mysql-promise");
 
-const connectionFunc = {
+const connection = mysql.createConnection({
     host: "localhost",
     port: 3306,
     user: "root",
     password: "Amazing654!",
     database: "employees_db"
-};
-
-const connection = mysql.createConnection(connectionFunc);
+});
 
 connection.connect(function(err){
     if (err) throw (err);
@@ -35,7 +33,6 @@ function start() {
                 "Add an employee",
                 "Add a department",
                 "Add a role",
-                "Update employee role",
                 "Delete an employee",
                 "Exit"
             ]
@@ -59,9 +56,6 @@ function start() {
                     break;
                 case "Add a role":
                     addRole();
-                    break;
-                case "Update employee role":
-                    updateRole();
                     break;
                 case "Exit":
                     connection.end();
@@ -103,209 +97,97 @@ function viewRoles() {
 };
 
 function addEmployee() {
-        inquirer.prompt([
-        {
-            name: "aliasUsed",
-            type: "input",
-            message: "What is the employee's alias?"
-        },
-        {
-            name: "originCountry",
-            type: "input",
-            message: "What is the employee's country of origin?"
-        }
+    inquirer
+        .prompt([
+            {
+                name: "aliasUsed",
+                type: "input",
+                message: "What is the employee's alias?",
+            },
+            {
+                name: "originCountry",
+                type: "input",
+                message: "What is the employee's country of origin?",
+            },
+            {
+                name: "employeeRole",
+                type: "input",
+                message: "What is this employee's role ID?",
+            },
+            {
+                name: "employeeManager",
+                type: "input",
+                message: "What is this employee's manager ID?",
+            },
         ])
-        .then(answer => {
-        const crit = [answer.aliasUsed, answer.originCountry]
-        const roleSql = "SELECT role.id, role.title FROM role";
-        connection.promise().query(roleSql, (error, data) => {
-            if (error) throw error;
-            const roles = data.map(({ id, title }) => ({ name: title, value: id }));
-            inquirer.prompt([
-                    {
-                    name: "employeeRole",
-                    type: "list",
-                    message: "What is the employee's role?",
-                    choices: roles
-                    }
-            ])
-            .then(roleChoice => {
-                const role = roleChoice.role;
-                crit.push(role);
-                const managerSql =  "SELECT * FROM employee";
-                connection.promise().query(managerSql, (error, data) => {
-                    if (error) throw error;
-                    const managers = data.map(({ id, alias_used, origin_country }) => ({ name: alias_used + " from " + origin_country, value: id }));
-                    inquirer.prompt([
-                    {
-                        name: "employeeManager",
-                        type: "list",
-                        message: "Who is the employee's manager?",
-                        choices: managers
-                    }
-                    ])
-                    .then(managerChoice => {
-                        const manager = managerChoice.manager;
-                        crit.push(manager);
-                        const sql =   `INSERT INTO employee (alias_used, origin_country, role_id, manager_id)
-                                    VALUES (?, ?, ?, ?)`;   
-                        connection.query(sql, crit, (error) => {
-                        if (error) throw error;
-                        console.log("Your new employee has been added!")
-                        start();   
-                        });
-                    });
-                });
-            });
+        .then((answer) => {
+            connection.query(
+                `INSERT INTO employee SET ?`,
+                {
+                    alias_used: answer.aliasUsed,
+                    origin_country: answer.originCountry,
+                    role_id: answer.employeeRole,
+                    manager_id: answer.employeeManager,
+                },
+                function (err, res) {
+                    if (err) throw err;
+                    start();
+                }
+            );
         });
-    });           
-};
+}
 function addDepartment() {
     inquirer.prompt([
-        {
+        {    
             name: "departmentName",
             type: "input",
-            message: "What is the name of the department you want to add?"
+            message: "What is the department name?",
         }
     ])
-    
-    .then(answers => {
-        connection.query("INSERT INTO department SET ?",
-        {
-            department_name: answers.departmentName,
+        .then((answer) => {
+            connection.query(
+                `INSERT INTO department SET ?`,
+                {
+                    department_name: answer.departmentName,
+                },
+                function (err, res) {
+                    if (err) throw err;
+                    start();
+                }
+            );
         });
-        console.log("Your new department has been added successfully!")
-        start();
-    })
-    .catch(err => {
-        console.log(err);
-        start();
-    });
-};
+}
     
 function addRole() {
-    let departmentName = [];
-
-    promisemysql.createConnection(connectionFunc)
-    .then((dbconnection) =>{
-        return Promise.all([
-            dbconnection.query("SELECT * FROM department"),
-        ]);
-    })
-
-    .then (([department]) => {
-        for (var i = 0; i < department.length; i++) {
-            departmentName.push(department[i].department_name);
-        }
-
-        return Promise.all([department]);
-    })
-
-    .then (([department]) => {
-        inquirer.prompt([
+    inquirer.prompt([
             {
-                name: "roleName",
+                name: "roleTitle",
                 type: "input",
-                message: "What is the new role that you would like to add?"
+                message: "What is the name of the role?",
             },
             {
                 name: "roleSalary",
                 type: "input",
-                message: "What is the salary for this new role?"
+                message: "What is this roles salary?",
             },
             {
-                name: "roleDepartment",
-                type: "list",
-                message: "What department does this role belong to?"
-            }
+                name: "departmentId",
+                type: "input",
+                message: "What is this role's department ID?",
+            },
         ])
-
-        .then(answers => {
-            let departmentId;
-
-            for (var i = 0; i < department.length; i++) {
-                if (answers.roleDepartment === department[i].department_name) {
-                    departmentId = department[i].id;
-                }
-            }
-
-            connection.query("INSERT INTO employee_role SET?", 
+        .then((answer) => {
+            connection.query(
+                `INSERT INTO role SET ?`,
                 {
-                    title: answers.roleName,
-                    salary: answers.roleSalary,
-                    department_id: departmentId
-            });
-
-            console.log("Your new role has been added!");
-            start();
-        })
-    })
-    .catch(err => {
-        console.log(err);
-        start();
-    });
-};
-
-function updateRole() {
-    let employeeRole = [];
-    let employees = [];
-
-    promisemysql.createConnection(connectionFunc)
-    .then((dbconnection) => {
-        return Promise.all([
-            dbconnection.query("SELECT * FROM employee_role"),
-            dbconnection.query("SELECT employee.id, concat(employee.alias_used, ' ', employee.origin_country) AS fullAlias FROM employee")
-        ]);
-    })
-
-    .then(([role,name]) => {
-        for (var i = 0; i < role.length; i++){
-            employeeRole.push(role[i].title);
-        }
-        for (var i = 0; i < name.length; i++) {
-            employees.push(name[i].fullAlias)
-        }
-        return Promise.all([role,name]);
-    })
-
-    .then(([role, name]) =>{
-        inquierer.prompt([
-            {
-                name: "employeeAlias",
-                type: "list",
-                message: "Which employee would you like to select?"
-            },
-            {
-                name: "newRole",
-                type: "list",
-                message: "What role would you like to change the employee to?"
-            }
-        ])
-
-        .then (answers => {
-            let roleId;
-            let employeeId;
-
-            for (var i = 0; i < role.length; i++){
-                if (answers.newRole === role[i].title) {
-                    roleId = role[i].id;
+                    title: answer.roleTitle,
+                    salary: answer.roleSalary,
+                    department_id: answer.departmentId,
+                },
+                function (err, res) {
+                    if (err) throw err;
+                    start();
                 }
-            }
-
-            for (var i = 0; i < role.length; i++){
-                if (answers.employeeAlias === name[i].fullAlias) {
-                    employeeId = name[i].id;
-                }
-            }
-
-            connection.query(`UPDATE employee SET role_id = ${roleId} WHERE id = ${employeeId}`);
-
-            console.log("This employee's role has been changed!");
-            start();
+            );
         });
-    })
-    .catch(err => {
-        console.log(err);
-        start();
-    })
-};
+}

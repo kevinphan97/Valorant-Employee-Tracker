@@ -21,6 +21,7 @@
     "inquirer": "^8.1.2",
     "mysql": "^2.18.1",
     "mysql-promise": "^5.0.0",
-    "mysql2": "^2.3.0"
+    "mysql2": "^2.3.0",
+    "promise": "^8.1.0"
   }
 }
