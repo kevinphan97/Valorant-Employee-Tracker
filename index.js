@@ -33,7 +33,6 @@ function start() {
                 "Add an employee",
                 "Add a department",
                 "Add a role",
-                "Delete an employee",
                 "Exit"
             ]
         })
